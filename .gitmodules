@@ -1,0 +1,4 @@
+[submodule "discord-bot-blindtest"]
+	path = discord-bot-blindtest
+	url = ./
+	branch = discord-bot-blindtest/main
