@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blind Test - Admin</title>
+
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 3em 1em;
+        background-color: hsl(0, 0%, 10%);
+        color: hsl(0, 0%, 90%);
+      }
+
+      body.buzzed {
+        background-color: hsl(200, 50%, 30%);
+      }
+
+      button {
+        font-size: 1em;
+      }
+
+      .actions {
+        text-align: center;
+      }
+
+      #buzzedBy {
+        font-size: 2em;
+      }
+
+      #timer {
+        font-size: 1.5em;
+      }
+
+      hr {
+        width: 5em;
+        margin: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <input
+      type="text"
+      name="channelId"
+      id="channelId"
+      placeholder="Channel ID"
+    />
+    <div class="actions">
+      <button onclick="join()">Join</button>
+      <button onclick="leave()">Leave</button>
+    </div>
+
+    <hr />
+
+    <input type="text" name="song" id="song" placeholder="Youtube Song ID" />
+    <div class="actions">
+      <button onclick="play()">Play</button>
+      <button onclick="pause()">Pause</button>
+      <button onclick="resume()">Resume</button>
+      <button onclick="stop()">Stop</button>
+      <button onclick="reset()">Reset</button>
+    </div>
+
+    <hr />
+
+    <div id="buzzedBy"></div>
+    <div id="timer"></div>
+
+    <script>
+      const password = prompt("Password?");
+      const channelIdContainer = document.getElementById("channelId");
+      const songContainer = document.getElementById("song");
+      const buzzedByContainer = document.getElementById("buzzedBy");
+      const timerContainer = document.getElementById("timer");
+
+      let buzzed = false;
+      let timerId;
+      let timer = 0;
+
+      const actions = {
+        buzzed(message) {
+          buzzed = true;
+          document.body.classList.add("buzzed");
+          buzzedByContainer.innerText = message.by;
+
+          timer = 0;
+          timerId = setInterval(() => {
+            timer++;
+            const minutes = (timer - (timer % 60)) / 60;
+            const seconds = ("" + (timer % 60)).padStart(2, "0");
+            timerContainer.innerText = minutes + ":" + seconds;
+          }, 1000);
+        },
+        reset() {
+          buzzed = false;
+          document.body.classList.remove("buzzed");
+          buzzedByContainer.innerText = "";
+          clearInterval(timerId);
+          timerContainer.innerText = "";
+        },
+      };
+
+      let socket = new WebSocket(
+        location.origin.replace("http", "ws") + location.pathname
+      );
+
+      socket.onopen = () => {
+        socket.send(
+          JSON.stringify({ action: "login", type: "admin", password })
+        );
+      };
+
+      socket.onerror = () => reject();
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+
+          if (actions[message.action]) {
+            actions[message.action](message);
+          } else {
+            console.error("no action: " + message.action);
+          }
+        } catch (err) {
+          console.error("invalid message: ", event.data);
+        }
+      };
+
+      socket.onclose = () => {
+        socket = null;
+      };
+
+      function join() {
+        socket.send(
+          JSON.stringify({
+            action: "join",
+            channelId: channelIdContainer.value.trim(),
+          })
+        );
+      }
+
+      function leave() {
+        socket.send('{"action": "leave"}');
+      }
+
+      function play() {
+        socket.send(
+          JSON.stringify({ action: "play", song: songContainer.value.trim() })
+        );
+      }
+
+      function pause() {
+        socket.send('{"action": "pause"}');
+      }
+
+      function resume() {
+        socket.send('{"action": "resume"}');
+      }
+
+      function stop() {
+        socket.send('{"action": "stop"}');
+      }
+
+      function reset() {
+        socket.send('{"action": "reset"}');
+      }
+    </script>
+  </body>
+</html>
