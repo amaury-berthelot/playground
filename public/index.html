@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blind Test</title>
+
+    <style>
+      body {
+        background-color: hsl(0, 0%, 10%);
+      }
+
+      body.buzzed {
+        background-color: hsl(200, 50%, 30%);
+      }
+
+      body.buzzed.by-you {
+        background-color: hsl(100, 50%, 30%);
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const name = prompt("Pseudo:");
+      let buzzed = false;
+
+      const actions = {
+        buzzed(message) {
+          buzzed = true;
+          document.body.classList.add("buzzed");
+
+          if (message.by === name) {
+            document.body.classList.add("by-you");
+          }
+        },
+        reset() {
+          buzzed = false;
+          document.body.classList.remove("buzzed");
+          document.body.classList.remove("by-you");
+        },
+      };
+
+      let socket = new WebSocket(
+        location.origin.replace("http", "ws") + location.pathname
+      );
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ action: "login", name, type: "user" }));
+      };
+
+      socket.onerror = () => reject();
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+
+          if (actions[message.action]) {
+            actions[message.action](message);
+          } else {
+            console.error("no action: " + message.action);
+          }
+        } catch (err) {
+          console.error("invalid message: ", event.data);
+        }
+      };
+
+      socket.onclose = () => {
+        socket = null;
+      };
+
+      addEventListener("keydown", (event) => {
+        if (!buzzed && event.keyCode === 32) {
+          socket.send('{ "action": "buzz" }');
+        }
+      });
+    </script>
+  </body>
+</html>
